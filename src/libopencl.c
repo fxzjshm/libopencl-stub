@@ -9,12 +9,15 @@
  *   If none of these are set, default system paths will be considered
 **/
 
+#include <stdlib.h>
+#include <dlfcn.h>
 #include "libopencl.h"
 
 
 #if defined(__APPLE__) || defined(__MACOSX)
 static const char *default_so_paths[] = {
-  "libOpenCL.so"
+  "libOpenCL.so",
+  "/System/Library/Frameworks/OpenCL.framework/OpenCL"
 };
 #elif defined(__ANDROID__)
 static const char *default_so_paths[] = {
@@ -22,6 +25,8 @@ static const char *default_so_paths[] = {
   "/system/vendor/lib/libOpenCL.so",
   "/system/vendor/lib/egl/libGLES_mali.so",
   "/system/lib64/egl/libGLES_mali.so",
+  "/system/vendor/lib64/egl/libGLES_mali.so",
+  "/system/vendor/lib64/egl/libGLES_1_mali.so",
   "/system/vendor/lib/libPVROCL.so",
   "/data/data/org.pocl.libs/files/lib/libpocl.so",
   "libOpenCL.so"
@@ -44,41 +49,31 @@ static const char *default_so_paths[] = {
 static void *so_handle = NULL;
 
 
-static int access_file(const char *filename)
-{
-  struct stat buffer;
-  return (stat(filename, &buffer) == 0);
-}
-
 static int open_libopencl_so()
 {
-  char *path = NULL, *str = NULL;
+  char *str = NULL;
   int i;
 
-  if((str=getenv("LIBOPENCL_SO_PATH")) && access_file(str)) {
-    path = str;
-  }
-  else if((str=getenv("LIBOPENCL_SO_PATH_2")) && access_file(str)) {
-    path = str;
-  }
-  else if((str=getenv("LIBOPENCL_SO_PATH_3")) && access_file(str)) {
-    path = str;
-  }
-  else if((str=getenv("LIBOPENCL_SO_PATH_4")) && access_file(str)) {
-    path = str;
-  }
+  if((str=getenv("LIBOPENCL_SO_PATH")) && (so_handle=dlopen(str, RTLD_LAZY))) {
 
-  if(path)
-  {
-    so_handle = dlopen(path, RTLD_LAZY);
+  }
+  else if((str=getenv("LIBOPENCL_SO_PATH_2")) && (so_handle=dlopen(str, RTLD_LAZY))) {
+
+  }
+  else if((str=getenv("LIBOPENCL_SO_PATH_3")) && (so_handle=dlopen(str, RTLD_LAZY))) {
+
+  }
+  else if((str=getenv("LIBOPENCL_SO_PATH_4")) && (so_handle=dlopen(str, RTLD_LAZY))) {
+
   }
 
   for(i=0; (!so_handle) && (i<(sizeof(default_so_paths) / sizeof(char*))); i++)
   {
-    if(access_file(default_so_paths[i]))
+    char* path = (char *) default_so_paths[i];
+    so_handle = dlopen(path, RTLD_LAZY);
+    if(so_handle)
     {
-      path = (char *) default_so_paths[i];
-      so_handle = dlopen(path, RTLD_LAZY);
+      break;
     }
   }
 
